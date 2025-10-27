@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block content %}
+<h3>Generate SKU</h3>
+
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Product Name (type the product name here)</label>
+    <input name="product_name" class="form-control" placeholder="e.g. Linen" required />
+    <div class="form-text">Type the Product Name — do not add product names from Create Data.</div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Product Type</label>
+    <select name="product_type" class="form-select">
+      <option value="">-- choose --</option>
+      {% for p in product_types %}
+      <option value="{{ p.id }}">{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Collection</label>
+    <select name="collection" class="form-select">
+      <option value="">-- choose --</option>
+      {% for c in collections %}
+      <option value="{{ c.id }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Color</label>
+    <select name="color" class="form-select">
+      <option value="">-- choose --</option>
+      {% for cl in colors %}
+      <option value="{{ cl.id }}">{{ cl.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Size</label>
+    <select name="size" class="form-select" required>
+      {% for s in sizes %}
+      <option value="{{ s }}">{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Generate SKU</button>
+</form>
+{% endblock %}
