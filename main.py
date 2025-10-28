@@ -1,4 +1,3 @@
-# main.py
 import os
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -89,14 +88,25 @@ def first_letters_of_words(s: str, num_words: int, letters_each=1):
             out.append('_' * letters_each)
     return ''.join(out)
 
-def first_n_letters(s: str, n: int):
+def first_n_letters_of_second_word(s: str, n: int):
     """
-    Return first n letters of s uppercased, padded with underscores if shorter, or '_'*n if empty.
+    Return first n letters of the *second* word in s, uppercased and padded with underscores
+    if shorter. If there is no second word, use the first word. If s is empty, return '_'*n.
+    Examples:
+      "Linen Amber" -> "AMB"  (second word "Amber")
+      "Linen"       -> "LIN"  (fallback to first word)
+      ""            -> "___"  (n underscores)
+      "A B"         -> "B__"  (second word "B" padded to length n)
     """
     if not s:
         return '_' * n
-    s = s.strip().upper()
-    out = s[:n]
+    parts = [p for p in s.strip().split() if p]
+    if not parts:
+        return '_' * n
+    # prefer second word if present, else first
+    word = parts[1] if len(parts) >= 2 else parts[0]
+    word = word.strip().upper()
+    out = word[:n]
     if len(out) < n:
         out = out.ljust(n, '_')
     return out
@@ -106,17 +116,18 @@ def build_sku(product_type, collection, product_name, color, size):
     Build SKU with the updated rules:
       - First 2 chars: first letter of up to 2 words of product_type => 2 chars
       - Next 2 chars: first letter of up to 2 words of collection => 2 chars
-      - Next 3 chars: first 3 letters of product_name (pad with '_' if shorter) => 3 chars
+      - Next 3 chars: FIRST 3 letters of the SECOND word of product_name if exists,
+                      otherwise first 3 letters of the first word. Padded with '_' if shorter.
+                      => 3 chars
       - Next 2 chars: first letter of up to 2 words of color => 2 chars
       - Last char: size (single character)
     Final SKU length = 10 (2+2+3+2+1). Internal pieces are padded with underscores as needed.
-    Size is appended directly as last character (no underscore inserted before size).
     """
     pt = first_letters_of_words(product_type, num_words=2, letters_each=1)   # 2 chars
     coll = first_letters_of_words(collection, num_words=2, letters_each=1)    # 2 chars
-    pname = first_n_letters(product_name, 3)                                 # 3 chars
-    col = first_letters_of_words(color, num_words=2, letters_each=1)         # 2 chars
-    size_char = str(size)[0] if size is not None else '_'
+    pname = first_n_letters_of_second_word(product_name, 3)                   # 3 chars (changed rule)
+    col = first_letters_of_words(color, num_words=2, letters_each=1)          # 2 chars
+    size_char = str(size)[0] if size else '_'
 
     sku_body = f"{pt}{coll}{pname}{col}"   # expected to be 9 chars (2+2+3+2)
     # Ensure body is exactly 9 chars (pad with underscores or truncate)
