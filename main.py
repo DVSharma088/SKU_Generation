@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
@@ -6,6 +7,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Length
+
+# ----- Logging -----
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+logger.info("Importing main.py")
 
 # ----- App setup -----
 app = Flask(__name__)
@@ -17,6 +23,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+# Optional: auto-create DB tables at import/start if environment variable set.
+# Disabled by default. Recommended approach: create DB before starting gunicorn (see README).
+if os.environ.get('AUTO_CREATE_DB') == '1':
+    try:
+        with app.app_context():
+            db.create_all()
+            logger.info("AUTO_CREATE_DB=1 -> Database tables ensured (db.create_all()).")
+    except Exception as e:
+        logger.exception("AUTO_CREATE_DB attempted db.create_all() but failed: %s", e)
 
 # ----- Models -----
 class User(db.Model, UserMixin):
@@ -92,11 +108,6 @@ def first_n_letters_of_second_word(s: str, n: int):
     """
     Return first n letters of the *second* word in s, uppercased and padded with underscores
     if shorter. If there is no second word, use the first word. If s is empty, return '_'*n.
-    Examples:
-      "Linen Amber" -> "AMB"  (second word "Amber")
-      "Linen"       -> "LIN"  (fallback to first word)
-      ""            -> "___"  (n underscores)
-      "A B"         -> "B__"  (second word "B" padded to length n)
     """
     if not s:
         return '_' * n
@@ -145,6 +156,13 @@ def index():
     if current_user.is_authenticated:
         return redirect(url_for('create_data'))
     return redirect(url_for('login'))
+
+@app.route('/health', methods=['GET', 'HEAD'])
+def health():
+    """
+    Simple health check endpoint. Returns 200 OK quickly for load balancers / health probes.
+    """
+    return "OK", 200
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -285,4 +303,5 @@ def init_db():
     print("DB initialized (tables created).")
 
 if __name__ == '__main__':
+    logger.info("Starting Flask development server (debug=%s)", True)
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
